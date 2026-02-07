@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Dwarven Deployment</title>
+    <style>
+        body { background: radial-gradient(1200px 800px at 30% 20%, #1b1a16 0%, #0a0a0a 55%, #050505 100%); color: #e6d2a4; font-family: 'Copperplate', 'Cinzel', 'Garamond', serif; display: flex; flex-direction: column; height: 100vh; margin: 0; overflow: hidden; }
+        body:before { content: ""; position: fixed; inset: 0; pointer-events: none; background:
+            radial-gradient(2px 2px at 10% 20%, rgba(255,140,60,0.35), transparent 60%),
+            radial-gradient(2px 2px at 70% 30%, rgba(255,140,60,0.25), transparent 60%),
+            radial-gradient(2px 2px at 30% 70%, rgba(255,140,60,0.30), transparent 60%),
+            radial-gradient(3px 3px at 80% 80%, rgba(255,120,40,0.25), transparent 60%),
+            radial-gradient(2px 2px at 50% 50%, rgba(255,160,80,0.20), transparent 60%);
+            animation: embers 6s linear infinite;
+            mix-blend-mode: screen;
+        }
+        #main-menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10,10,10,0.96); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .menu-box { border: 3px solid #a07f3a; padding: 40px; background: #161616; text-align: center; box-shadow: 0 0 30px #000; position: relative; }
+        .menu-box:before { content: ""; position: absolute; inset: -10px; border: 2px solid #3b2f1a; pointer-events: none; }
+        .menu-box h1 { letter-spacing: 2px; text-shadow: 0 0 10px rgba(200,160,74,0.35); position: relative; }
+        .menu-box h1:before { content: "⚒"; position: absolute; left: -24px; top: 0; color: #c8a04a; }
+        .menu-box h1:after { content: "⚒"; position: absolute; right: -24px; top: 0; color: #c8a04a; }
+        
+        #changelog-modal { display: none; position: absolute; top: 10%; left: 10%; width: 80%; height: 80%; background: #050505; border: 2px solid gold; padding: 20px; z-index: 1100; overflow-y: auto; text-align: left; color: #ccc; box-shadow: 0 0 50px #000; }
+        #tutorial-modal { display: none; position: absolute; top: 8%; left: 8%; width: 84%; height: 84%; background: #050505; border: 2px solid #00ffcc; padding: 20px; z-index: 1100; overflow-y: auto; text-align: left; color: #ccc; box-shadow: 0 0 50px #000; }
+        #inventory-modal, #merchant-modal { display: none; position: absolute; top: 10%; left: 10%; width: 80%; height: 80%; background: #050505; border: 2px solid #a07f3a; padding: 20px; z-index: 1100; overflow-y: auto; text-align: left; color: #ccc; box-shadow: 0 0 50px #000; }
+        #inventory-modal h2, #merchant-modal h2 { color: #c8a04a; border-bottom: 1px solid #c8a04a; padding-bottom: 10px; }
+        .tab-bar { display: flex; gap: 10px; margin: 10px 0; }
+        .tab-btn { padding: 6px 10px; border: 1px solid #a07f3a; background: #0c0c0c; color: #e6d2a4; cursor: pointer; }
+        .tab-btn.active { background: #a07f3a; color: #0c0c0c; }
+        .inv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .inv-card { border: 1px solid #3b2f1a; padding: 8px; background: #111; }
+        .rar-common { color: #cfcfcf; }
+        .rar-uncommon { color: #7bd88f; }
+        .rar-rare { color: #5aa9ff; }
+        .rar-epic { color: #c77dff; }
+        .rar-legendary { color: #ffcc66; }
+        .rar-mythic { color: #ff6b6b; }
+        #tutorial-modal h2 { color: #00ffcc; border-bottom: 1px solid #00ffcc; padding-bottom: 10px; }
+        #tutorial-modal .section { color: gold; font-weight: bold; margin-top: 15px; }
+        #changelog-modal h2 { color: gold; border-bottom: 1px solid gold; padding-bottom: 10px; }
+        #changelog-modal .version { color: #00ffcc; font-weight: bold; margin-top: 15px; }
+        .close-log { position: sticky; top: 0; float: right; background: #440000; color: white; border: 1px solid red; cursor: pointer; padding: 5px 10px; }
+
+        select, button.start-btn, button.log-btn { padding: 10px 20px; background: #0c0c0c; color: #e6d2a4; border: 1px solid #a07f3a; font-weight: bold; cursor: pointer; margin-top: 15px; width: 100%; text-transform: uppercase; letter-spacing: 0.5px; }
+        button.start-btn:hover { background: #a07f3a; color: #0c0c0c; }
+        button.log-btn { border-color: #c8a04a; color: #c8a04a; margin-top: 10px; }
+        button.log-btn:hover { background: #c8a04a; color: #000; }
+
+        #game-container { display: none; flex-direction: column; height: 100%; width: 100%; max-width: 900px; margin: 0 auto; background:
+            linear-gradient(180deg, #14110c 0%, #0d0b09 100%),
+            repeating-linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02) 2px, rgba(0,0,0,0) 2px, rgba(0,0,0,0) 8px);
+            border-left: 3px solid #3b2f1a; border-right: 3px solid #3b2f1a; box-shadow: inset 0 0 0 2px #1e1810; position: relative; }
+        #game-container:before { content: ""; position: absolute; left: 0; right: 0; top: 34px; height: 2px; background: repeating-linear-gradient(90deg, #c8a04a 0 10px, transparent 10px 16px); opacity: 0.35; pointer-events: none; }
+        #terminal { flex: 1; overflow-y: auto; background: #0a0a0a; padding: 10px; font-size: 13px; border-bottom: 2px solid #3b2f1a; }
+        .field-section { display: flex; justify-content: center; gap: 8px; min-height: 110px; padding: 6px; border: 1px dashed #3b2f1a; margin: 2px 0; background: repeating-linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02) 6px, rgba(0,0,0,0) 6px, rgba(0,0,0,0) 12px); }
+        .card { width: 74px; height: 108px; border: 2px solid; border-radius: 4px; background: linear-gradient(180deg, #201a12 0%, #16120d 100%); text-align: center; font-size: 11px; animation: summon 0.4s ease-out; position: relative; display: flex; flex-direction: column; align-items: center; box-shadow: inset 0 0 0 1px #3b2f1a; }
+        .card:before { content: ""; position: absolute; inset: -3px; border: 1px solid rgba(200,160,74,0.35); pointer-events: none; }
+        .card:after { content: "ᚠᚢᚦᚨᚱᚲ"; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 9px; color: rgba(200,160,74,0.7); letter-spacing: 2px; text-shadow: 0 0 6px rgba(200,160,74,0.35); }
+        .card.back:after { content: "ᚷᚹᚺᛁᛃ"; }
+        .card .art { width: 56px; height: 40px; margin-top: 4px; background-size: 56px 40px; image-rendering: pixelated; border: 1px solid #000; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.6); }
+        .card .name { margin-top: 4px; }
+        .card .meta { margin-top: 2px; }
+        .card .cooldown { margin-top: 2px; color: #ffcc66; font-size: 10px; }
+        .card.back { background: repeating-linear-gradient(45deg, #111, #111 6px, #1b1b1b 6px, #1b1b1b 12px); color: #c8a04a; }
+        .card.back .art { background: #000; border-color: #3b2f1a; }
+
+        .art.type-S { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='40'><rect width='56' height='40' fill='%23101010'/><rect x='24' y='6' width='8' height='8' fill='%23d9c3a0'/><rect x='22' y='14' width='12' height='10' fill='%23883333'/><rect x='20' y='24' width='6' height='8' fill='%23333333'/><rect x='30' y='24' width='6' height='8' fill='%23333333'/><rect x='18' y='16' width='4' height='8' fill='%23ff4d4d'/><rect x='34' y='16' width='4' height='8' fill='%23ff4d4d'/><rect x='6' y='20' width='14' height='4' fill='%23bbbbbb'/><rect x='4' y='18' width='4' height='8' fill='%23666666'/><rect x='18' y='8' width='4' height='4' fill='%23444444'/><rect x='34' y='8' width='4' height='4' fill='%23444444'/></svg>"); }
+        .art.type-A { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='40'><rect width='56' height='40' fill='%23101010'/><rect x='24' y='6' width='8' height='8' fill='%23d9c3a0'/><rect x='22' y='14' width='12' height='10' fill='%234da6ff'/><rect x='20' y='24' width='6' height='8' fill='%23333333'/><rect x='30' y='24' width='6' height='8' fill='%23333333'/><rect x='16' y='16' width='4' height='8' fill='%2377baff'/><rect x='36' y='16' width='4' height='8' fill='%2377baff'/><rect x='38' y='8' width='2' height='18' fill='%23cce6ff'/><rect x='40' y='10' width='12' height='2' fill='%23cce6ff'/><rect x='20' y='8' width='4' height='4' fill='%23444444'/><rect x='32' y='8' width='4' height='4' fill='%23444444'/></svg>"); }
+        .art.type-B { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='40'><rect width='56' height='40' fill='%23101010'/><rect x='24' y='6' width='8' height='8' fill='%23d9c3a0'/><rect x='22' y='14' width='12' height='10' fill='%234dff88'/><rect x='20' y='24' width='6' height='8' fill='%23333333'/><rect x='30' y='24' width='6' height='8' fill='%23333333'/><rect x='16' y='16' width='4' height='8' fill='%2377ff99'/><rect x='36' y='16' width='4' height='8' fill='%2377ff99'/><rect x='6' y='18' width='10' height='8' fill='%23225522'/><rect x='10' y='16' width='4' height='12' fill='%23337733'/><rect x='20' y='8' width='4' height='4' fill='%23444444'/><rect x='32' y='8' width='4' height='4' fill='%23444444'/></svg>"); }
+        .art.type-Elite { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='40'><rect width='56' height='40' fill='%23101010'/><rect x='22' y='4' width='12' height='10' fill='%23ffde3a'/><rect x='20' y='14' width='16' height='12' fill='%23ffd700'/><rect x='18' y='26' width='6' height='8' fill='%23886600'/><rect x='32' y='26' width='6' height='8' fill='%23886600'/><rect x='14' y='16' width='4' height='10' fill='%23fff2a8'/><rect x='38' y='16' width='4' height='10' fill='%23fff2a8'/><rect x='6' y='10' width='8' height='20' fill='%23ffe680'/><rect x='42' y='10' width='8' height='20' fill='%23ffe680'/><rect x='24' y='2' width='8' height='2' fill='%23fff2a8'/></svg>"); }
+        .art.type-W { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='40'><rect width='56' height='40' fill='%23101010'/><rect x='24' y='6' width='8' height='8' fill='%23d9c3a0'/><rect x='22' y='14' width='12' height='10' fill='%2399ccff'/><rect x='20' y='24' width='6' height='8' fill='%23333333'/><rect x='30' y='24' width='6' height='8' fill='%23333333'/><rect x='16' y='16' width='4' height='8' fill='%23b3ddff'/><rect x='36' y='16' width='4' height='8' fill='%23b3ddff'/><rect x='6' y='12' width='4' height='18' fill='%23cce6ff'/><rect x='4' y='10' width='8' height='4' fill='%23ffffff'/><rect x='20' y='8' width='4' height='4' fill='%23444444'/><rect x='32' y='8' width='4' height='4' fill='%23444444'/></svg>"); }
+        .art.type-Item { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='40'><rect width='56' height='40' fill='%23101010'/><rect x='16' y='12' width='24' height='16' fill='%23caa24a'/><rect x='20' y='16' width='16' height='8' fill='%23ffe08a'/><rect x='24' y='8' width='8' height='6' fill='%23fff2a8'/><rect x='18' y='12' width='4' height='4' fill='%239d7a2d'/><rect x='34' y='12' width='4' height='4' fill='%239d7a2d'/></svg>"); }
+        .card.immortal { box-shadow: 0 0 15px #00ffff; border-color: #00ffff !important; }
+        .card.item-card { border-color: gold; color: gold; font-style: italic; }
+        
+        @keyframes summon { from { transform: scale(0); } to { transform: scale(1); } }
+        @keyframes strike { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+        @keyframes flash { 0% { background: #161616; } 50% { background: #444400; } 100% { background: #161616; } }
+        @keyframes shake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(-2px, 2px); } 75% { transform: translate(2px, -2px); } }
+        
+        .attacking { animation: strike 0.3s; } .casting { animation: flash 0.5s; } .shaking { animation: shake 0.2s infinite; }
+        .type-S { border-color: #c04a4a; color: #c04a4a; } .type-A { border-color: #4d8fb8; color: #4d8fb8; } .type-B { border-color: #4db872; color: #4db872; }
+        .type-Elite { border-color: gold !important; color: gold !important; box-shadow: 0 0 15px gold; font-weight: bold; }
+        .stat-bar { display: flex; justify-content: space-between; font-weight: bold; background: #0c0c0c; padding: 8px 15px; border-bottom: 1px solid #3b2f1a; text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 0 6px rgba(200,160,74,0.25); }
+        .controls { padding: 15px; background: #0f0d0a; display: flex; gap: 10px; border-top: 1px solid #3b2f1a; flex-wrap: wrap; }
+        input { flex-grow: 1; min-width: 220px; padding: 12px; background: #0a0a0a; color: #e6d2a4; border: 1px solid #3b2f1a; outline: none; }
+
+        @media (max-width: 768px) {
+            #game-container { border-left: 0; border-right: 0; }
+            .stat-bar { flex-direction: column; gap: 6px; align-items: center; text-align: center; }
+            .field-section { gap: 6px; min-height: 100px; }
+            .card { width: 68px; height: 102px; }
+            .card .art { width: 52px; height: 38px; }
+            .controls { padding: 10px; }
+            button, select, input { font-size: 14px; }
+            #terminal { font-size: 12px; }
+            #changelog-modal, #tutorial-modal, #inventory-modal, #merchant-modal {
+                top: 4%; left: 4%; width: 92%; height: 92%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .card { width: 62px; height: 96px; }
+            .card .art { width: 48px; height: 34px; }
+            .controls { gap: 6px; }
+            input { min-width: 180px; }
+        }
+        .label { font-size: 10px; color: #7a6a4b; text-align: center; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+
+        @keyframes embers {
+            0% { transform: translateY(0); opacity: 0.6; }
+            50% { transform: translateY(-8px); opacity: 0.9; }
+            100% { transform: translateY(0); opacity: 0.6; }
+        }
+        #victory-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1100; flex-direction: column; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body>
+
+<div id="main-menu">
+    <div class="menu-box">
+        <h1>DWARVEN DEPLOYMENT V1.0.2</h1>     
+        <p>P1 Clan:</p>
+        <select id="race-select">
+            <option value="Human">Human (First Action +1 Mana, +1 Max Hand)</option>
+            <option value="Dwarf">Dwarf (Prep Shield, Grudge vs Elf/Orc, +1 Mana on 1st Summon)</option>
+            <option value="Elf">Elf (Pass +2 Mana, 1st Cast -1 Mana, Grudge vs Orc/Dwarf)</option>
+            <option value="Gnome">Gnome (+5% Item Draw, 1st Cast Draws, 2nd Cast +1 Mana)</option>
+            <option value="Halfling">Halfling (Pass Draw, 15% Dodge, Resolve vs Orc)</option>
+            <option value="Orc">Orc (Endurance Save, Fury +1 Mana, Grudge vs Elf/Dwarf)</option>
+            <option value="Tengu">Tengu (1st Attack +1 Mana, 1st Cast Draws, Grudge vs Human)</option>
+            <option value="Kobold">Kobold (Trap Stun, Merge +1 Mana, Grudge vs Dwarf/Gnome)</option>
+            <option value="Goblin">Goblin (Impulse +1 Mana, Prank vs Human/Dogfolk, Fireball Discard)</option>
+            <option value="Dogfolk">Dogfolk (+1 Mana on Death, 1st Summon +1 Mana, Item +1 Mana)</option>
+            <option value="Catfolk">Catfolk (25% Dodge, Curiosity +1 Mana on Draw/Item, vs Dwarf)</option>
+        </select>
+        
+        <p>Hall:</p>
+        <select id="mode-select" onchange="document.getElementById('p2-race-container').style.display = (this.value === 'pvp' ? 'block' : 'none')">
+            <option value="ai">Single Player vs AI</option>
+            <option value="pvp">Local Multiplayer</option>
+        </select>
+
+        <div id="p2-race-container" style="display:none">
+            <p>P2 Clan:</p>
+            <select id="race-select-p2">
+                <option value="Human">Human (First Action +1 Mana, +1 Max Hand)</option>
+                <option value="Dwarf">Dwarf (Prep Shield, Grudge vs Elf/Orc, +1 Mana on 1st Summon)</option>
+                <option value="Elf">Elf (Pass +2 Mana, 1st Cast -1 Mana, Grudge vs Orc/Dwarf)</option>
+                <option value="Gnome">Gnome (+5% Item Draw, 1st Cast Draws, 2nd Cast +1 Mana)</option>
+                <option value="Halfling">Halfling (Pass Draw, 15% Dodge, Resolve vs Orc)</option>
+                <option value="Orc">Orc (Endurance Save, Fury +1 Mana, Grudge vs Elf/Dwarf)</option>
+                <option value="Tengu">Tengu (1st Attack +1 Mana, 1st Cast Draws, Grudge vs Human)</option>
+                <option value="Kobold">Kobold (Trap Stun, Merge +1 Mana, Grudge vs Dwarf/Gnome)</option>
+                <option value="Goblin">Goblin (Impulse +1 Mana, Prank vs Human/Dogfolk, Fireball Discard)</option>
+                <option value="Dogfolk">Dogfolk (+1 Mana on Death, 1st Summon +1 Mana, Item +1 Mana)</option>
+                <option value="Catfolk">Catfolk (25% Dodge, Curiosity +1 Mana on Draw/Item, vs Dwarf)</option>
+            </select>
+        </div>
+
+        <button class="start-btn" onclick="startGame()">ENTER THE FORGE</button>
+        <button class="log-btn" onclick="toggleLog(true)">VIEW CHANGELOG</button>
+        <button class="log-btn" onclick="toggleTutorial(true)">HOW TO PLAY</button>
+        <button class="log-btn" onclick="enterFullscreen()">FULLSCREEN</button>
+        
+        <div id="changelog-modal">
+            <button class="close-log" onclick="toggleLog(false)">CLOSE</button>
+            <h2>CHANGELOG</h2>
+            
+            <div class="version">V1.0.2 - Tactical AI Patch</div>
+            <ul>
+                <li><strong>Arcane AI:</strong> AI can now merge units into Elites and cast all spells (Fireball, Aegis, Intellect).</li>
+                <li><strong>Intellect Rework:</strong> Casting Intellect no longer ends your turn, allowing for combo plays.</li>
+                <li><strong>Elite Reinforcement:</strong> Merged units now arrive with a 2-tick shield.</li>
+            </ul>
+
+            <div class="version">QOL & PATCHES</div>
+            <ul>
+                <li><strong>UI:</strong> Mana now displays current/cap; Wizard cooldown shown on card.</li>
+                <li><strong>Gameplay:</strong> Fireball targets up to 3 random non-immortal units; Merchant now times out after a turn.</li>
+                <li><strong>Systems:</strong> Load game button added; Help command added; Mana Overcharger implemented; AI uses Overcharge when below cap.</li>
+                <li><strong>Visuals:</strong> Pixel-art card portraits added for all types.</li>
+            </ul>
+            
+            <div class="version">Mana! Mana! Mana!</div>
+            <ul>
+                <li><strong>Legendary Mana Pot:</strong> New ultra-rare draw that restores 6 mana (capped at max).</li>
+            </ul>
+            
+            <div class="version">Invisible Hands & Better SFX</div>
+            <ul>
+                <li><strong>Invisibility Potion:</strong> Common draw that hides your hand from the opponent for 2–5 turns.</li>
+                <li><strong>Sound:</strong> Upgraded SFX for summon, attack, merge, cast, items, draw, and pass.</li>
+                <li><strong>Tutorial:</strong> Added a “How to Play” menu with tips.</li>
+            </ul>
+            
+            <div class="version">The Sound of Invisibility</div>
+            <ul>
+                <li><strong>Audio:</strong> Invisibility potion now uses the improved item SFX pass.</li>
+            </ul>
+
+            <div class="version">Pathfinder Core 16</div>
+            <ul>
+                <li><strong>Factions:</strong> Added all 16 ancestries from Player Core & Player Core 2, each with unique units, elites, and passives.</li>
+            </ul>
+
+            <div class="version">The Forge Update</div>
+            <ul>
+                <li><strong>Gather:</strong> New `gather [mine|forest|craftery]` command for ingredients (rarity based).</li>
+                <li><strong>Craft:</strong> Craft items via learned recipes using `craft [item]`.</li>
+                <li><strong>Inventory:</strong> New inventory UI (max 15 ingredients).</li>
+                <li><strong>Merchant UI:</strong> Tabs for items and recipe books.</li>
+            </ul>
+        </div>
+
+        <div id="tutorial-modal">
+            <button class="close-log" onclick="toggleTutorial(false)">CLOSE</button>
+            <h2>HOW TO PLAY</h2>
+            <div class="section">Goal</div>
+            <ul>
+                <li>First player to fill their field to max slots wins.</li>
+            </ul>
+            <div class="section">Core Commands</div>
+            <ul>
+                <li><strong>summon [idx]</strong> Deploy a unit from your hand.</li>
+                <li><strong>attack [S/A/B/Elite/W]</strong> Rock-paper-scissors combat (S beats A, A beats B, B beats S). Elite hits front. Wizard opens spells.</li>
+                <li><strong>merge</strong> Combine S/A/B into an Elite.</li>
+                <li><strong>cast [fireball/aegis/intellect]</strong> Spend mana for spells.</li>
+                <li><strong>use [idx]</strong> Use an item from your hand (does not end turn).</li>
+                <li><strong>draw</strong> Draw a card. <strong>pass</strong> Gain mana.</li>
+            </ul>
+            <div class="section">Tips</div>
+            <ul>
+                <li>Use Aegis right before you expect an Elite strike.</li>
+                <li>Intellect is best when your hand is low — it doesn’t end your turn.</li>
+                <li>Merge timing matters. Immunity ticks down each turn.</li>
+                <li>Items can swing tempo since they don’t end turns.</li>
+            </ul>
+            <div class="section">Ancestries</div>
+            <ul>
+                <li><strong>Human:</strong> First action each turn grants +1 mana. +1 max hand.</li>
+                <li><strong>Dwarf:</strong> Start with 2 mine ingredients, first hit each turn negated, +1 mana on first summon, +1 mana vs Elf/Orc.</li>
+                <li><strong>Elf:</strong> Pass +2 mana, first cast -1 mana, first summon costs 1 mana, +1 mana vs Orc/Dwarf.</li>
+                <li><strong>Gnome:</strong> +5% item draw, first cast draws 1, second cast costs +1 mana, +1 mana vs Dwarf/Elf.</li>
+                <li><strong>Halfling:</strong> Pass draws 1, 15% dodge, +1 mana vs Orc.</li>
+                <li><strong>Orc:</strong> First lost unit each turn survives (1‑tick Immortal), +1 mana on first hit, +1 mana vs Elf/Dwarf.</li>
+                <li><strong>Tengu:</strong> First attack +1 mana, first cast draws 1, +1 mana vs Human.</li>
+                <li><strong>Kobold:</strong> First hit stuns, first merge +1 mana, +1 mana vs Dwarf/Gnome.</li>
+                <li><strong>Goblin:</strong> First summon/attack +1 mana, +1 mana vs Human/Dogfolk, Fireball discards a random card.</li>
+                <li><strong>Dogfolk:</strong> +1 mana on death, first summon +1 mana, first item +1 mana.</li>
+                <li><strong>Catfolk:</strong> 25% dodge, +1 mana on first draw/item, +1 mana vs Dwarf.</li>
+            </ul>
+        </div>
+
+    </div>
+</div>
+
+<div id="inventory-modal">
+    <button class="close-log" onclick="toggleInventory(false)">CLOSE</button>
+    <h2>FORGE INVENTORY</h2>
+    <div id="inventory-info"></div>
+    <div id="inventory-list" class="inv-grid"></div>
+    <div class="section">Known Recipes</div>
+    <div id="recipe-list"></div>
+</div>
+
+<div id="merchant-modal">
+    <button class="close-log" onclick="toggleMerchant(false)">CLOSE</button>
+    <h2>WANDERING MERCHANT</h2>
+    <div class="tab-bar">
+        <button class="tab-btn" id="tab-items" onclick="switchMerchantTab('items')">ITEMS</button>
+        <button class="tab-btn" id="tab-recipes" onclick="switchMerchantTab('recipes')">RECIPES</button>
+    </div>
+    <div id="merchant-items"></div>
+    <div id="merchant-recipes" style="display:none;"></div>
+</div>
+
+<div id="game-container">
+    <div class="stat-bar">
+        <span>P1 [<span id="p1-race-ui">---</span>] FIELD: <span id="p1-count">0</span>/<span id="p1-slots">10</span> | MANA: <span id="p1-mana">0</span></span>
+        <span style="color: gold;">TICKS: <span id="turn-count">1</span></span>
+        <span>P2 [<span id="p2-race-ui">---</span>] FIELD: <span id="p2-count">0</span>/<span id="p2-slots">10</span> | MANA: <span id="p2-mana">0</span></span>
+    </div>
+    <div id="terminal"></div>
+    <p class="label">P2 HOLDING</p><div id="p2-hand" class="field-section"></div>
+    <p class="label">P2 HALL</p><div id="p2-field" class="field-section"></div>
+    <p class="label">P1 HALL</p><div id="p1-field" class="field-section"></div>
+    <p class="label">P1 HOLDING</p><div id="p1-hand" class="field-section"></div>
+    <div class="controls">
+        <input type="text" id="cmd" placeholder="summon [idx] | use [idx] | attack [S/A/B/Elite/W] | merge | cast [fireball, aegis, intellect] | draw | pass | gather [mine/forest/craftery] | craft [item] | help">
+        <button onclick="saveGame()" style="background:#333; color:#00ffcc; border:1px solid #00ffcc; padding:10px; cursor:pointer;">SAVE</button>
+        <button onclick="loadGame()" style="background:#333; color:#00ffcc; border:1px solid #00ffcc; padding:10px; cursor:pointer;">LOAD</button>
+        <button onclick="toggleInventory(true)" style="background:#333; color:#00ffcc; border:1px solid #00ffcc; padding:10px; cursor:pointer;">INVENTORY</button>
+        <button onclick="if(confirm('Exit?')){location.reload()}" style="background:#440000; color:#ff4d4d; border:1px solid #ff4d4d; padding:10px; cursor:pointer; font-weight:bold;">EXIT</button>
+    </div>
+</div>
+
+<div id="victory-screen">
+    <h1 id="victory-text" style="color: gold; font-size: 50px;"></h1>
+    <p style="color: white;">THE BOARD IS CLAIMED!</p>
+    <button onclick="location.reload()" class="start-btn" style="width: 200px;">REMATCH</button>
+</div>
+
+<script>
+const term = document.getElementById('terminal');
+const cmdInput = document.getElementById('cmd');
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+let P1, P2, turn, ticks, isSinglePlayer;
+
+function toggleLog(show) {
+    document.getElementById('changelog-modal').style.display = show ? 'block' : 'none';
+}
+function toggleTutorial(show) {
+    document.getElementById('tutorial-modal').style.display = show ? 'block' : 'none';
+}
+function enterFullscreen() {
+    const el = document.documentElement;
+    if (document.fullscreenElement) { document.exitFullscreen(); return; }
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+}
+function toggleInventory(show) {
+    document.getElementById('inventory-modal').style.display = show ? 'block' : 'none';
+    if (show) renderInventory();
+}
+function toggleMerchant(show) {
+    document.getElementById('merchant-modal').style.display = show ? 'block' : 'none';
+    if (show) { switchMerchantTab('items'); renderMerchantUI(); }
+}
+function switchMerchantTab(tab) {
+    document.getElementById('merchant-items').style.display = tab === 'items' ? 'block' : 'none';
+    document.getElementById('merchant-recipes').style.display = tab === 'recipes' ? 'block' : 'none';
+    document.getElementById('tab-items').classList.toggle('active', tab === 'items');
+    document.getElementById('tab-recipes').classList.toggle('active', tab === 'recipes');
+}
+
+function playSfx(t) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    if(t==='summon'){ o.type='triangle'; o.frequency.setValueAtTime(240, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(720, audioCtx.currentTime+0.12); g.gain.setValueAtTime(0.12, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.12); o.start(); o.stop(audioCtx.currentTime+0.12); }
+    else if(t==='attack'){ o.type='sawtooth'; o.frequency.setValueAtTime(140, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(70, audioCtx.currentTime+0.08); g.gain.setValueAtTime(0.12, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.12); o.start(); o.stop(audioCtx.currentTime+0.12); }
+    else if(t==='merge'){ o.type='square'; o.frequency.setValueAtTime(180, audioCtx.currentTime); o.frequency.linearRampToValueAtTime(520, audioCtx.currentTime + 0.5); g.gain.setValueAtTime(0.12, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.6); o.start(); o.stop(audioCtx.currentTime + 0.6); }
+    else if(t==='cast'){ o.type='sine'; o.frequency.setValueAtTime(440, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime+0.2); g.gain.setValueAtTime(0.08, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.25); o.start(); o.stop(audioCtx.currentTime+0.25); }
+    else if(t==='item'){ o.type='square'; o.frequency.setValueAtTime(600, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime+0.08); g.gain.setValueAtTime(0.06, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.12); o.start(); o.stop(audioCtx.currentTime+0.12); }
+    else if(t==='draw'){ o.type='triangle'; o.frequency.setValueAtTime(300, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime+0.06); g.gain.setValueAtTime(0.05, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.08); o.start(); o.stop(audioCtx.currentTime+0.08); }
+    else if(t==='pass'){ o.type='sine'; o.frequency.setValueAtTime(220, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(260, audioCtx.currentTime+0.08); g.gain.setValueAtTime(0.04, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.1); o.start(); o.stop(audioCtx.currentTime+0.1); }
+}
+
+const RACE_DATA = {
+    Human: { units:{S:"Paladin",A:"Longbowman",B:"Halberdier"}, elite:"Marshal", handLimitBonus:1 },
+    Dwarf: { units:{S:"Iron Guard",A:"Crossbowman",B:"Berserker"}, elite:"The Elder", startingUnits:3, dwarfPrepared:true },
+    Elf: { units:{S:"Silver Knight",A:"Moonlight Archer",B:"Wild Druid"}, elite:"Moon Spirit", passManaBonus:2, elfArcane:true },
+    Gnome: { units:{S:"Rune Squire",A:"Spark Sprinter",B:"Clockwork Pug"}, elite:"Spark Sage", itemChanceBonus:0.05, gnomeWhim:true },
+    Halfling: { units:{S:"Lucky Guard",A:"Stone-Skipper",B:"Burrow Bruiser"}, elite:"Ace of Burrows", passDraw:true, dodgeChance:0.15 },
+    Orc: { units:{S:"Iron Tusker",A:"Spear Breaker",B:"Skull Maul"}, elite:"Ironmaw", manaCapBonus:1, orcFury:true },
+    Tengu: { units:{S:"Gale Blade",A:"Sky Archer",B:"Raven Claw"}, elite:"Stormfeather", startHandBonus:1, tenguEcho:true },
+    Kobold: { units:{S:"Trap Scout",A:"Slinger",B:"Tunnel Brawler"}, elite:"Trapmaster", itemChanceBonus:0.10, koboldTactics:true },
+    Goblin: { units:{S:"Torch Lancer",A:"Scrap Sling",B:"Warg Rider"}, elite:"Sootfang", goblinSpark:true },
+    Dogfolk: { units:{S:"Mastiff Guard",A:"Hound Hunter",B:"Pitbull Brawler"}, elite:"Howl King", manaOnDeath:1, dogLoyal:true },
+    Catfolk: { units:{S:"Shadowblade",A:"Dart-Slinger",B:"Tiger-Claw"}, elite:"Assassin", dodgeChance:0.25, catCuriosity:true },
+};
+
+const getRace = (race) => RACE_DATA[race] || RACE_DATA["Human"];
+
+const RARITY_ORDER = ["Common","Uncommon","Rare","Epic","Legendary","Mythic"];
+const RARITY_CHANCES = [
+    { name:"Common", chance:0.50 },
+    { name:"Uncommon", chance:0.30 },
+    { name:"Rare", chance:0.12 },
+    { name:"Epic", chance:0.05 },
+    { name:"Legendary", chance:0.025 },
+    { name:"Mythic", chance:0.005 },
+];
+
+const INGREDIENTS = {
+    mine: {
+        Common:["Stone","Iron Ore"],
+        Uncommon:["Copper Ore","Salt"],
+        Rare:["Silver Ore","Coal"],
+        Epic:["Gold Ore","Obsidian"],
+        Legendary:["Mithral Shard","Rune Steel"],
+        Mythic:["Star Ore","Worldcore"],
+    },
+    forest: {
+        Common:["Wood","Game Meat"],
+        Uncommon:["Pine Resin","Herbs"],
+        Rare:["Hardwood","Beast Hide"],
+        Epic:["Ancient Bark","Moonshroom"],
+        Legendary:["Feywood","Spirit Antler"],
+        Mythic:["Eldertree Heart","Phoenix Feather"],
+    },
+    craftery: {
+        Common:["Cloth","Leather"],
+        Uncommon:["Oil","Glass"],
+        Rare:["Chain Links","Arcane Ink"],
+        Epic:["Runic Plate","Crystal Lens"],
+        Legendary:["Dragon Sinew","Soul Thread"],
+        Mythic:["Forge Ember","Timeworn Gear"],
+    }
+};
+
+const RECIPES = {
+    "Stone Aegis": { ingredients:{Stone:2,"Iron Ore":1}, effect:"aegis", rarity:"Common" },
+    "Iron Tonic": { ingredients:{"Game Meat":1,"Herbs":1,"Iron Ore":1}, effect:"mana", bonus:3, rarity:"Common" },
+    "Runic Ward": { ingredients:{"Rune Steel":1,"Arcane Ink":1}, effect:"immortal", rarity:"Rare" },
+    "Forge Draught": { ingredients:{"Coal":1,"Oil":1}, effect:"overcharge", rarity:"Uncommon" },
+    "Smoke Bomb": { ingredients:{"Pine Resin":1,"Obsidian":1}, effect:"invisibility", rarity:"Epic" },
+    "Grudge Elixir": { ingredients:{"Beast Hide":1,"Silver Ore":1}, effect:"rage", rarity:"Rare" },
+    "Starforged Core": { ingredients:{"Star Ore":1,"Forge Ember":1}, effect:"legendary_mana", rarity:"Mythic" },
+    "Ancestral Banner": { ingredients:{"Feywood":1,"Soul Thread":1}, effect:"draw2", rarity:"Legendary" },
+};
+
+const RECIPE_BOOKS = [
+    { name:"Tinker's Notes", cost:4, recipes:["Stone Aegis","Iron Tonic"] },
+    { name:"Runesmith Codex", cost:6, recipes:["Forge Draught","Runic Ward"] },
+    { name:"Shadow Ledger", cost:8, recipes:["Smoke Bomb","Grudge Elixir"] },
+    { name:"Mythic Slate", cost:12, recipes:["Ancestral Banner","Starforged Core"] },
+];
+
+function rollRarity() {
+    let r = Math.random();
+    for (const entry of RARITY_CHANCES) {
+        if (r < entry.chance) return entry.name;
+        r -= entry.chance;
+    }
+    return "Common";
+}
+
+function invCount(p) {
+    return Object.values(p.Inventory || {}).reduce((a,b)=>a+b,0);
+}
+
+function addIngredient(p, name) {
+    p.Inventory = p.Inventory || {};
+    if (invCount(p) >= 15) return false;
+    p.Inventory[name] = (p.Inventory[name] || 0) + 1;
+    return true;
+}
+
+function renderInventory() {
+    const p = (turn === 1) ? P1 : P2;
+    const inv = p.Inventory || {};
+    const list = document.getElementById('inventory-list');
+    const info = document.getElementById('inventory-info');
+    list.innerHTML = '';
+    info.innerHTML = `<div>CAPACITY: ${invCount(p)}/15</div>`;
+    const entries = Object.keys(inv);
+    if (entries.length === 0) list.innerHTML = '<div class="inv-card">No ingredients.</div>';
+    entries.forEach(k => {
+        const d = document.createElement('div');
+        d.className = 'inv-card';
+        d.innerHTML = `<div><strong>${k}</strong> x${inv[k]}</div>`;
+        list.appendChild(d);
+    });
+    const recipes = p.RecipesKnown || [];
+    const rlist = document.getElementById('recipe-list');
+    if (recipes.length === 0) rlist.innerHTML = 'No recipes learned.';
+    else rlist.innerHTML = recipes.map(r => {
+        const rec = RECIPES[r];
+        const req = Object.entries(rec.ingredients).map(([i,q])=>`${i}x${q}`).join(', ');
+        return `<div>${r} (${rec.rarity}) — ${req}</div>`;
+    }).join('');
+}
+
+function addStarterMineIngredients(p, count) {
+    for (let i = 0; i < count; i++) {
+        const pool = INGREDIENTS.mine.Common;
+        const item = pool[Math.floor(Math.random() * pool.length)];
+        addIngredient(p, item);
+    }
+}
+
+function grantHumanAmbition(p) {
+    if (p.Race === "Human" && !p.humanAmbitionUsed) {
+        p.Mana = Math.min(p.Mana + 1, manaCap(p));
+        p.humanAmbitionUsed = true;
+        log("HUMAN AMBITION: +1 MANA", "gold");
+    }
+}
+
+function grantGoblinSpark(p, context) {
+    if (p.Race !== "Goblin") return;
+    if (!p.goblinSparkUsed && (context === "summon" || context === "attack")) {
+        p.Mana = Math.min(p.Mana + 1, manaCap(p));
+        p.goblinSparkUsed = true;
+        log("GOBLIN IMPULSE: +1 MANA", "gold");
+    }
+}
+
+function grantCatCuriosity(p, context) {
+    if (p.Race !== "Catfolk") return;
+    if (!p.catCuriosityUsed && (context === "draw" || context === "item")) {
+        p.Mana = Math.min(p.Mana + 1, manaCap(p));
+        p.catCuriosityUsed = true;
+        log("CATFOLK CURIOSITY: +1 MANA", "gold");
+    }
+}
+
+function grantDogBond(p, context) {
+    if (p.Race !== "Dogfolk") return;
+    if (context === "summon" && !p.dogSummonUsed) {
+        p.Mana = Math.min(p.Mana + 1, manaCap(p));
+        p.dogSummonUsed = true;
+        log("DOGFOLK LOYALTY: +1 MANA ON FIRST SUMMON", "gold");
+    }
+    if (context === "item" && !p.dogItemUsed) {
+        p.Mana = Math.min(p.Mana + 1, manaCap(p));
+        p.dogItemUsed = true;
+        log("DOGFOLK INSTINCT: +1 MANA ON ITEM", "gold");
+    }
+}
+
+function grantTenguBlade(p) {
+    if (p.Race !== "Tengu") return;
+    if (!p.tenguBladeUsed) {
+        p.Mana = Math.min(p.Mana + 1, manaCap(p));
+        p.tenguBladeUsed = true;
+        log("TENGU BLADE: +1 MANA ON FIRST ATTACK", "gold");
+    }
+}
+
+function triggerKoboldTrap(attacker, defender) {
+    if (attacker.Race !== "Kobold" || attacker.koboldTrapUsed) return;
+    defender.stunnedTurns = Math.max(defender.stunnedTurns || 0, 1);
+    attacker.koboldTrapUsed = true;
+    log("KOBOLD TRAP: ENEMY STUNNED!", "gold");
+}
+
+function applyGnomeCastCost(p) {
+    if (p.Race !== "Gnome") return 0;
+    if (p.gnomeCastCount >= 1) return 1;
+    return 0;
+}
+
+function onGnomeCast(p) {
+    if (p.Race !== "Gnome") return;
+    if (p.gnomeCastCount === 0) {
+        if (drawCard(p)) log("GNOME WHIM: DREW 1", "gold");
+    }
+    p.gnomeCastCount++;
+}
+
+function renderMerchantUI() {
+    const p = (turn === 1) ? P1 : P2;
+    const items = document.getElementById('merchant-items');
+    const recipes = document.getElementById('merchant-recipes');
+    items.innerHTML = `
+        <div class="inv-card"><strong>Mana Potion</strong> (6) <button class="tab-btn" onclick="handleCommand('buy manapot')">BUY</button></div>
+        <div class="inv-card"><strong>Stun Bomb</strong> (4) <button class="tab-btn" onclick="handleCommand('buy stun')">BUY</button></div>
+        <div class="inv-card"><strong>Strength Pot</strong> (4) <button class="tab-btn" onclick="handleCommand('buy strength')">BUY</button></div>
+        <div class="inv-card"><strong>Invisibility Potion</strong> (5) <button class="tab-btn" onclick="handleCommand('buy invisibility')">BUY</button></div>
+        <div class="inv-card"><strong>Legendary Mana Pot</strong> (8) <button class="tab-btn" onclick="handleCommand('buy legendary')">BUY</button></div>
+        <div class="inv-card"><strong>Scouts Poison</strong> (6) <button class="tab-btn" onclick="handleCommand('buy poison')">BUY</button></div>
+        <div class="inv-card"><strong>Mana Overcharger</strong> (6) <button class="tab-btn" onclick="handleCommand('buy overcharge')">BUY</button></div>
+        <div class="inv-card"><strong>Fortress</strong> (8) <button class="tab-btn" onclick="handleCommand('buy fortress')">BUY</button></div>
+        <div class="inv-card"><strong>Wizard</strong> (10) <button class="tab-btn" onclick="handleCommand('buy wizard')">BUY</button></div>
+    `;
+    recipes.innerHTML = RECIPE_BOOKS.map(b => {
+        const known = (p.RecipesKnown || []).some(r => b.recipes.includes(r));
+        return `<div class="inv-card"><strong>${b.name}</strong> (${b.cost})<br>Recipes: ${b.recipes.join(', ')}<br><button class="tab-btn" onclick="handleCommand('buy book ${b.name}')">BUY BOOK</button></div>`;
+    }).join('');
+}
+
+const createDeck = (race) => {
+    let d = [];
+    const n = getRace(race).units;
+    for(let i=0; i<17; i++) d.push({name:n.S, type:"S"});
+    for(let i=0; i<17; i++) d.push({name:n.A, type:"A"});
+    for(let i=0; i<18; i++) d.push({name:n.B, type:"B"});
+    return d.sort(() => Math.random() - 0.5);
+};
+
+function log(m, c="#00ffcc") { const e=document.createElement('div'); e.style.color=c; e.innerHTML=`> ${m}`; term.appendChild(e); term.scrollTop=term.scrollHeight; }
+
+function updateUI() {
+    document.getElementById('p1-race-ui').innerText = P1.Race.toUpperCase();
+    document.getElementById('p2-race-ui').innerText = P2.Race.toUpperCase();
+    document.getElementById('p1-count').innerText = P1.Field.length; 
+    document.getElementById('p1-slots').innerText = P1.Slots;
+    document.getElementById('p2-count').innerText = P2.Field.length; 
+    document.getElementById('p2-slots').innerText = P2.Slots;
+    document.getElementById('p1-mana').innerText = `${P1.Mana}/${manaCap(P1)}`; 
+    document.getElementById('p2-mana').innerText = `${P2.Mana}/${manaCap(P2)}`;
+    document.getElementById('turn-count').innerText = ticks;
+    const hideP1Hand = !isSinglePlayer && P1.invisibleTurns > 0 && turn === 2;
+    const hideP2Hand = !isSinglePlayer && P2.invisibleTurns > 0 && turn === 1;
+    renderZone('p1-hand', P1.Hand, true, hideP1Hand); renderZone('p1-field', P1.Field, false, false);
+    renderZone('p2-hand', P2.Hand, !isSinglePlayer, hideP2Hand); renderZone('p2-field', P2.Field, false, false);
+    
+    if(P1.Field.length >= P1.Slots) showVictory(P1.Race);
+    else if(P2.Field.length >= P2.Slots) showVictory(P2.Race);
+}
+
+function renderZone(id, cards, idx, hide) {
+    const z=document.getElementById(id); z.innerHTML='';
+    if (hide) {
+        cards.forEach(() => {
+            const d=document.createElement('div');
+            d.className='card back';
+            d.innerHTML=`<div class="art"></div><div class="name">HIDDEN</div><div class="meta"><b>?</b></div>`;
+            z.appendChild(d);
+        });
+        return;
+    }
+    cards.forEach((c, i) => { 
+        const d=document.createElement('div'); 
+        d.className=`card type-${c.type}`; 
+        if(c.isItem) d.classList.add('item-card');
+        if(c.immortal > 0) d.classList.add('immortal');
+        const artType = c.isItem ? 'Item' : c.type;
+        const cooldown = (c.type === 'W' && c.spellCooldown > 0) ? `<div class="cooldown">CD:${c.spellCooldown}</div>` : '';
+        d.innerHTML=`${idx?`<b>[${i}]</b><br>`:''}<div class="art type-${artType}"></div><div class="name">${c.name}</div><div class="meta"><b>${c.type}</b>${c.immortal > 0 ? ' • IMMUNE' : ''}</div>${cooldown}`; 
+        z.appendChild(d); 
+    });
+}
+
+function triggerAnim(id, cl) { const el = document.getElementById(id); if(el) { el.classList.remove(cl); void el.offsetWidth; el.classList.add(cl); } }
+function showVictory(r) { document.getElementById('victory-text').innerText = `VICTORY: ${r.toUpperCase()}`; document.getElementById('victory-screen').style.display = 'flex'; }
+
+const manaCap = (p) => (p && p.ManaCap) ? p.ManaCap : 6;
+
+function unitKilled(player) {
+    const r = getRace(player.Race);
+    if (r.manaOnDeath) {
+        player.Mana = Math.min(player.Mana + r.manaOnDeath, manaCap(player));
+        log(`${player.Race.toUpperCase()} INSTINCT: +${r.manaOnDeath} MANA ON DEATH`, "#ffaa00");
+    }
+}
+
+async function handleCommand(input) {
+    const p = input.toLowerCase().trim().split(/\s+/); const act = p[0]; const val = parseInt(p[1]);
+    let cur = (turn === 1) ? P1 : P2; let opp = (turn === 1) ? P2 : P1; let fId = (turn === 1) ? 'p1-field' : 'p2-field';
+
+    if (act === "help") {
+        log("COMMANDS: summon [idx] | use [idx] | attack [S/A/B/Elite/W] | merge | cast [fireball|aegis|intellect] | draw | pass | gather [mine|forest|craftery] | craft [item] | merchant | buy [item|poison|overcharge|fortress|wizard|book] | spell [fireball|thunderbolt|aegis|intellect]", "gold");
+        return;
+    }
+
+    if (act === "gather") {
+        const region = p[1];
+        if (!["mine","forest","craftery"].includes(region)) { log("GATHER WHERE? mine | forest | craftery"); return; }
+        if (invCount(cur) >= 15) { log("INVENTORY FULL (15)."); return; }
+        const rarity = rollRarity();
+        const pool = INGREDIENTS[region][rarity];
+        const item = pool[Math.floor(Math.random() * pool.length)];
+        if (!addIngredient(cur, item)) { log("INVENTORY FULL (15)."); return; }
+        grantHumanAmbition(cur);
+        log(`GATHERED ${item} (${rarity})`);
+        endTurn();
+        updateUI();
+        return;
+    }
+
+    if (act === "craft") {
+        const rawName = input.slice(6).trim();
+        const nameKey = Object.keys(RECIPES).find(k => k.toLowerCase() === rawName.toLowerCase());
+        const recipe = nameKey ? RECIPES[nameKey] : null;
+        if (!recipe) { log("UNKNOWN RECIPE."); return; }
+        if (!(cur.RecipesKnown || []).includes(nameKey)) { log("RECIPE NOT LEARNED."); return; }
+        const inv = cur.Inventory || {};
+        const missing = Object.entries(recipe.ingredients).filter(([ing, qty]) => (inv[ing] || 0) < qty);
+        if (missing.length > 0) { log("MISSING INGREDIENTS."); return; }
+        Object.entries(recipe.ingredients).forEach(([ing, qty]) => { inv[ing] -= qty; if (inv[ing] <= 0) delete inv[ing]; });
+        const crafted = { name: nameKey, type:"Item", isItem:true, effect: recipe.effect, bonus: recipe.bonus };
+        cur.Hand.push(crafted);
+        grantHumanAmbition(cur);
+        log(`CRAFTED ${nameKey}!`, "gold");
+        updateUI();
+        return;
+    }
+
+    if (act === "use" && cur.Hand[val] && cur.Hand[val].isItem) {
+        const item = cur.Hand[val];
+        if (item.effect === "poison") {
+            const eliteIdx = opp.Field.findIndex(u => u.type === "Elite");
+            if (eliteIdx === -1) { log("NO ELITE ON FIELD! ITEM SAVED."); return; }
+            cur.Hand.splice(val, 1); log(`USED ${item.name}!`, "gold"); log(`POISON ELIMINATED ${opp.Field[eliteIdx].name}!`, "#ff4d4d");
+            opp.Field.splice(eliteIdx, 1); unitKilled(opp); updateUI(); return;
+        }
+        cur.Hand.splice(val, 1); log(`USED ${item.name}!`, "gold"); playSfx('item'); grantHumanAmbition(cur); grantCatCuriosity(cur, "item"); grantDogBond(cur, "item");
+        if (item.effect === "mana") cur.Mana = Math.min(cur.Mana + 3, manaCap(cur));
+        else if (item.effect === "legendary_mana") {
+            cur.Mana = Math.min(cur.Mana + 6, manaCap(cur));
+            log("LEGENDARY MANA SURGE! (+6 MANA)", "gold");
+        }
+        else if (item.effect === "overcharge") { 
+            cur.ManaCap = Math.min(manaCap(cur) + 2, 20);
+            cur.Mana = Math.min(cur.Mana + 2, manaCap(cur));
+            log("MANA OVERCHARGED! (+2 CAP, +2 MANA)", "gold");
+        }
+        else if (item.effect === "draw2") {
+            drawCard(cur); drawCard(cur); log("ANCIENT BANNER: DREW 2!", "gold");
+        }
+        else if (item.effect === "rage") {
+            cur.rageTurns = 2;
+            log("GRUDGE RAGE! (+1 MANA ON HIT FOR 2 TURNS)", "gold");
+        }
+        else if (item.effect === "invisibility") {
+            cur.invisibleTurns = Math.floor(Math.random() * 4) + 2;
+            log(`HAND HIDDEN FOR ${cur.invisibleTurns} TURNS`, "gold");
+        }
+        else if (item.effect === "stun") { 
+            if (opp.stunnedTurns > 0) { log("ENEMY ALREADY STUNNED!"); }
+            else { opp.stunnedTurns = Math.floor(Math.random() * 3) + 1; log("ENEMY STUNNED!"); }
+        }
+        else if (item.effect === "immortal") { if(cur.Field.length > 0) { const target = cur.Field[Math.floor(Math.random() * cur.Field.length)]; target.immortal = 2; log(`${target.name} IS IMMORTAL!`, "#00ffff"); } }
+        updateUI(); return; 
+    }
+
+    if (act === "summon" && cur.Hand[val] && !cur.Hand[val].isItem && cur.Field.length < cur.Slots) {
+        if (cur.Race === "Elf" && !cur.elfSummonTaxUsed) {
+            if (cur.Mana < 1) { log("ELVEN FINESSE: NEED 1 MANA TO SUMMON FIRST UNIT"); return; }
+            cur.Mana -= 1;
+            cur.elfSummonTaxUsed = true;
+            log("ELVEN FINESSE: -1 MANA ON FIRST SUMMON", "gold");
+        }
+        playSfx('summon'); 
+        cur.Field.push(cur.Hand.splice(val, 1)[0]); 
+        grantHumanAmbition(cur);
+        grantGoblinSpark(cur, "summon");
+        grantDogBond(cur, "summon");
+        const r = getRace(cur.Race);
+        if (r.summonManaBonus) {
+            cur.Mana = Math.min(cur.Mana + r.summonManaBonus, manaCap(cur));
+            log(`SUMMONED ${cur.Field[cur.Field.length-1].name} (+${r.summonManaBonus} MANA)`);
+        } else {
+            log(`SUMMONED ${cur.Field[cur.Field.length-1].name}`);
+        }
+        if (cur.Race === "Dwarf" && !cur.dwarfSummonUsed) {
+            cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+            cur.dwarfSummonUsed = true;
+            log("DWARVEN AMBITION: +1 MANA ON FIRST SUMMON", "gold");
+        }
+        endTurn();
+    } else if (act === "merge") {
+        if (cur.Field.some(u => u.type === "Elite")) { if(turn===1) log("ONE ELITE LIMIT REACHED."); return; }
+        const types = ["S","A","B"];
+        if (types.every(t => cur.Field.some(c => c.type === t))) {
+            playSfx('merge'); log("INITIATING MERGE...", "gold"); document.getElementById(fId).classList.add('shaking');
+            grantHumanAmbition(cur);
+            if (cur.Race === "Kobold" && !cur.koboldMergeUsed) {
+                cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+                cur.koboldMergeUsed = true;
+                log("KOBOLD TEAMWORK: +1 MANA ON MERGE", "gold");
+            }
+            setTimeout(() => {
+                types.forEach(t => cur.Field.splice(cur.Field.findIndex(c => c.type === t), 1));
+                const eliteName = getRace(cur.Race).elite || "Elite";
+                cur.Field.push({ name: eliteName, type: "Elite", immortal: 2 });
+                document.getElementById(fId).classList.remove('shaking'); log("ELITE MERGED: Divine protection granted for 2 ticks!", "gold"); updateUI(); endTurn();
+            }, 1500);
+        } else { if(turn===1) log("NEED S, A, AND B UNITS."); }
+    } else if (act === "attack") {
+        const oppRace = getRace(opp.Race);
+        if (oppRace.dodgeChance && Math.random() < oppRace.dodgeChance) { log(`${opp.Race.toUpperCase()} AGILITY: ATTACK DODGED!`, "#ff4da6"); endTurn(); updateUI(); return; }
+        const t = p[1]?.toUpperCase();
+        if (t === "ELITE" && cur.Field.some(c=>c.type==="Elite") && opp.Field.length > 0) {
+            if (opp.Protected) { opp.Protected = false; log("ELITE BLOCKED BY AEGIS!"); }
+            else if (opp.Race === "Dwarf" && !opp.dwarfShieldUsed) { opp.dwarfShieldUsed = true; log("DWARVEN PREPAREDNESS: FIRST HIT NEGATED!", "gold"); }
+            else if (opp.Field[0].immortal > 0) { log("TARGET IS IMMUNE!"); }
+            else { 
+                playSfx('attack'); 
+                triggerAnim(fId, 'attacking'); 
+                if (opp.Race === "Orc" && !opp.orcEnduranceUsed) { 
+                    opp.orcEnduranceUsed = true; 
+                    opp.Field[0].immortal = 1; 
+                    log("ORC ENDURANCE: UNIT SURVIVED!", "gold"); 
+                } else {
+                    opp.Field.splice(0, 1); 
+                    unitKilled(opp); 
+                    if (cur.Race === "Orc" && !cur.orcFuryUsed) { cur.Mana = Math.min(cur.Mana + 1, manaCap(cur)); cur.orcFuryUsed = true; log("ORC FURY: +1 MANA", "gold"); }
+                    if ((opp.Race === "Elf" || opp.Race === "Dwarf") && cur.Race === "Orc" && !cur.orcGrudgeUsed) { cur.Mana = Math.min(cur.Mana + 1, manaCap(cur)); cur.orcGrudgeUsed = true; log("ORC GRUDGE: +1 MANA VS ELF/DWARF", "gold"); }
+                }
+                if ((opp.Race === "Orc" || opp.Race === "Dwarf") && cur.Race === "Elf" && !cur.elfPrideUsed) { 
+                    cur.Mana = Math.min(cur.Mana + 1, manaCap(cur)); 
+                    cur.elfPrideUsed = true; 
+                    log("ELVEN PRIDE: +1 MANA VS ORC/DWARF", "gold"); 
+                }
+                if ((opp.Race === "Human" || opp.Race === "Dogfolk") && cur.Race === "Goblin" && !cur.goblinPrankUsed) {
+                    cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+                    cur.goblinPrankUsed = true;
+                    log("GOBLIN PRANK: +1 MANA VS HUMAN/DOGFOLK", "gold");
+                }
+                if (opp.Race === "Dwarf" && cur.Race === "Catfolk" && !cur.catDwarfUsed) {
+                    cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+                    cur.catDwarfUsed = true;
+                    log("CATFOLK DISDAIN: +1 MANA VS DWARF", "gold");
+                }
+                if ((opp.Race === "Dwarf" || opp.Race === "Gnome") && cur.Race === "Kobold" && !cur.koboldGrudgeUsed) {
+                    cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+                    cur.koboldGrudgeUsed = true;
+                    log("KOBOLD GRUDGE: +1 MANA VS DWARF/GNOME", "gold");
+                }
+                triggerKoboldTrap(cur, opp);
+                if ((opp.Race === "Dwarf" || opp.Race === "Elf") && cur.Race === "Gnome" && !cur.gnomeIrritateUsed) {
+                    cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+                    cur.gnomeIrritateUsed = true;
+                    log("GNOME IRRITATION: +1 MANA VS DWARF/ELF", "gold");
+                }
+                if (opp.Race === "Orc" && cur.Race === "Halfling" && !cur.halflingGrudgeUsed) {
+                    cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+                    cur.halflingGrudgeUsed = true;
+                    log("HALFLING RESOLVE: +1 MANA VS ORC", "gold");
+                }
+                if (opp.Race === "Human" && cur.Race === "Tengu" && !cur.tenguGrudgeUsed) {
+                    cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+                    cur.tenguGrudgeUsed = true;
+                    log("TENGU GRUDGE: +1 MANA VS HUMAN", "gold");
+                }
+                grantTenguBlade(cur);
+                grantGoblinSpark(cur, "attack");
+                log("ELITE DELAYED ENEMY PROGRESS!"); 
+            }
+            grantHumanAmbition(cur);
+            endTurn();
+        } else {
+            const tt = (t==="S")?"A":(t==="A")?"B":"S"; const ti = opp.Field.findIndex(c=>c.type===tt);
+            if (cur.Field.some(c=>c.type===t) && ti > -1) {
+                if (opp.Protected) { opp.Protected = false; log("BLOCKED BY AEGIS!"); }
+                else if (opp.Race === "Dwarf" && !opp.dwarfShieldUsed) { opp.dwarfShieldUsed = true; log("DWARVEN PREPAREDNESS: FIRST HIT NEGATED!", "gold"); }
+                else if (opp.Field[ti].immortal > 0) { log("TARGET IS IMMUNE!"); }
+                else { 
+                    playSfx('attack'); 
+                    triggerAnim(fId, 'attacking'); 
+                    if (opp.Race === "Orc" && !opp.orcEnduranceUsed) { 
+                        opp.orcEnduranceUsed = true; 
+                        opp.Field[ti].immortal = 1; 
+                        log("ORC ENDURANCE: UNIT SURVIVED!", "gold"); 
+                    } else {
+                        opp.Field.splice(ti, 1); 
+                        unitKilled(opp); 
+                        if (cur.Race === "Orc" && !cur.orcFuryUsed) { cur.Mana = Math.min(cur.Mana + 1, manaCap(cur)); cur.orcFuryUsed = true; log("ORC FURY: +1 MANA", "gold"); }
+                        if ((opp.Race === "Elf" || opp.Race === "Dwarf") && cur.Race === "Orc" && !cur.orcGrudgeUsed) { cur.Mana = Math.min(cur.Mana + 1, manaCap(cur)); cur.orcGrudgeUsed = true; log("ORC GRUDGE: +1 MANA VS ELF/DWARF", "gold"); }
+                    }
+                    if ((opp.Race === "Orc" || opp.Race === "Dwarf") && cur.Race === "Elf" && !cur.elfPrideUsed) { 
+                        cur.Mana = Math.min(cur.Mana + 1, manaCap(cur)); 
+                        cur.elfPrideUsed = true; 
+                        log("ELVEN PRIDE: +1 MANA VS ORC/DWARF", "gold"); 
+                    }
+                    if ((opp.Race === "Elf" || opp.Race === "Orc") && cur.Race === "Dwarf" && !cur.dwarfGrudgeUsed) { 
+                        cur.Mana = Math.min(cur.Mana + 1, manaCap(cur)); 
+                        cur.dwarfGrudgeUsed = true; 
+                        log("DWARVEN GRUDGE: +1 MANA VS ELVES/ORCS", "gold"); 
+                    }
+                    if ((opp.Race === "Human" || opp.Race === "Dogfolk") && cur.Race === "Goblin" && !cur.goblinPrankUsed) {
+                        cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+                        cur.goblinPrankUsed = true;
+                        log("GOBLIN PRANK: +1 MANA VS HUMAN/DOGFOLK", "gold");
+                    }
+                    if (opp.Race === "Dwarf" && cur.Race === "Catfolk" && !cur.catDwarfUsed) {
+                        cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+                        cur.catDwarfUsed = true;
+                        log("CATFOLK DISDAIN: +1 MANA VS DWARF", "gold");
+                    }
+                    if ((opp.Race === "Dwarf" || opp.Race === "Gnome") && cur.Race === "Kobold" && !cur.koboldGrudgeUsed) {
+                        cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+                        cur.koboldGrudgeUsed = true;
+                        log("KOBOLD GRUDGE: +1 MANA VS DWARF/GNOME", "gold");
+                    }
+                    triggerKoboldTrap(cur, opp);
+                    if ((opp.Race === "Dwarf" || opp.Race === "Elf") && cur.Race === "Gnome" && !cur.gnomeIrritateUsed) {
+                        cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+                        cur.gnomeIrritateUsed = true;
+                        log("GNOME IRRITATION: +1 MANA VS DWARF/ELF", "gold");
+                    }
+                    if (opp.Race === "Orc" && cur.Race === "Halfling" && !cur.halflingGrudgeUsed) {
+                        cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+                        cur.halflingGrudgeUsed = true;
+                        log("HALFLING RESOLVE: +1 MANA VS ORC", "gold");
+                    }
+                    if (opp.Race === "Human" && cur.Race === "Tengu" && !cur.tenguGrudgeUsed) {
+                        cur.Mana = Math.min(cur.Mana + 1, manaCap(cur));
+                        cur.tenguGrudgeUsed = true;
+                        log("TENGU GRUDGE: +1 MANA VS HUMAN", "gold");
+                    }
+                    grantTenguBlade(cur);
+                    grantGoblinSpark(cur, "attack");
+                    if (cur.rageTurns > 0) { cur.Mana = Math.min(cur.Mana + 1, manaCap(cur)); log("GRUDGE PAID: +1 MANA", "gold"); }
+                    log("HIT! Enemy unit removed."); 
+                }
+                grantHumanAmbition(cur);
+                endTurn();
+            } else { log("MISS!"); grantHumanAmbition(cur); endTurn(); }
+        }
+    } else if (act === "cast") {
+        const isElf = cur.Race === "Elf";
+        const discount = (isElf && !cur.elfCastUsed) ? 1 : 0;
+        const gnomeTax = applyGnomeCastCost(cur);
+        if (p[1] === "fireball" && cur.Mana >= (3 - discount + gnomeTax)) { 
+            cur.Mana -= (3 - discount + gnomeTax); 
+            if (discount) { cur.elfCastUsed = true; log("ELVEN ARCANA: -1 MANA ON FIRST CAST", "gold"); }
+            playSfx('cast');
+            grantHumanAmbition(cur);
+            if (cur.Race === "Tengu" && !cur.tenguEchoUsed) { if (drawCard(cur)) log("TENGU ECHO: DREW 1", "gold"); cur.tenguEchoUsed = true; }
+            if (cur.Race === "Goblin" && cur.Hand.length > 0) {
+                const di = Math.floor(Math.random() * cur.Hand.length);
+                const dropped = cur.Hand.splice(di, 1)[0];
+                log(`GOBLIN MISHAP: DISCARDED ${dropped.name}`, "#ff884d");
+            }
+            onGnomeCast(cur);
+            triggerAnim('game-container', 'casting'); 
+            let removed = 0;
+            let pool = opp.Field.map((u, i) => ({u, i})).filter(x => x.u.immortal <= 0);
+            while (pool.length > 0 && removed < 3) {
+                const pick = Math.floor(Math.random() * pool.length);
+                const idx = pool[pick].i;
+                if (opp.Race === "Orc" && !opp.orcEnduranceUsed) {
+                    opp.orcEnduranceUsed = true;
+                    opp.Field[idx].immortal = 1;
+                    log("ORC ENDURANCE: UNIT SURVIVED!", "gold");
+                } else {
+                    opp.Field.splice(idx, 1);
+                    unitKilled(opp);
+                }
+                pool = opp.Field.map((u, i) => ({u, i})).filter(x => x.u.immortal <= 0);
+                removed++;
+            }
+            log(`FIREBALL CLEARED ENEMY PROGRESS!`); 
+            endTurn(); 
+        }
+        else if (p[1] === "aegis" && cur.Mana >= (2 - discount + gnomeTax)) { cur.Mana -= (2 - discount + gnomeTax); if (discount) { cur.elfCastUsed = true; log("ELVEN ARCANA: -1 MANA ON FIRST CAST", "gold"); } playSfx('cast'); grantHumanAmbition(cur); if (cur.Race === "Tengu" && !cur.tenguEchoUsed) { if (drawCard(cur)) log("TENGU ECHO: DREW 1", "gold"); cur.tenguEchoUsed = true; } onGnomeCast(cur); cur.Protected = true; log(`AEGIS UP!`); endTurn(); }
+        else if (p[1] === "intellect" && cur.Mana >= (2 - discount + gnomeTax)) { 
+            cur.Mana -= (2 - discount + gnomeTax); if (discount) { cur.elfCastUsed = true; log("ELVEN ARCANA: -1 MANA ON FIRST CAST", "gold"); } playSfx('cast'); grantHumanAmbition(cur); if (cur.Race === "Tengu" && !cur.tenguEchoUsed) { if (drawCard(cur)) log("TENGU ECHO: DREW 1", "gold"); cur.tenguEchoUsed = true; } onGnomeCast(cur); drawCard(cur); drawCard(cur); log(`INTELLECT! Drew 2 cards. (Extra Action!)`, "gold"); updateUI(); 
+        }
+    } else if (act === "draw") { if(drawCard(cur)) { playSfx('draw'); grantHumanAmbition(cur); grantCatCuriosity(cur, "draw"); log("DREW CARD"); endTurn(); } }
+    else if (act === "pass") { 
+        const r = getRace(cur.Race);
+        let gain = 1 + (r.passManaBonus || 0);
+        cur.Mana = Math.min(cur.Mana + gain, manaCap(cur)); 
+        playSfx('pass'); 
+        grantHumanAmbition(cur);
+        log(`PASSED (+${gain} MANA)`); 
+        if (r.passDraw) { if (drawCard(cur)) log("BONUS DRAW!", "gold"); }
+        if (cur.Race === "Dwarf" && cur.Hand.length === 0) { if (drawCard(cur)) log("DWARVEN AMBITION: EMPTY-HAND DRAW", "gold"); }
+        endTurn(); 
+    }
+    updateUI();
+}
+
+function drawCard(p) {
+    const r = getRace(p.Race);
+    let handLimit = 7 + (r.handLimitBonus || 0);
+    if (p.Hand.length < handLimit && p.Deck.length > 0) {
+        const itemChance = 0.25 + (r.itemChanceBonus || 0);
+        if (Math.random() < itemChance) {
+            const items = [
+                {name:"Mana Potion",type:"Item",isItem:true,effect:"mana"},
+                {name:"Stun Bomb",type:"Item",isItem:true,effect:"stun"},
+                {name:"Strength Pot",type:"Item",isItem:true,effect:"immortal"},
+                {name:"Scouts Poison",type:"Item",isItem:true,effect:"poison"},
+                {name:"Legendary Mana Pot",type:"Item",isItem:true,effect:"legendary_mana"},
+                {name:"Invisibility Potion",type:"Item",isItem:true,effect:"invisibility"}
+            ];
+            const roll = Math.random();
+            let chosen;
+            if (roll < 0.02) chosen = items[4];
+            else if (roll < 0.05) chosen = items[5];
+            else if (roll < 0.10) chosen = items[3];
+            else chosen = items[Math.floor(Math.random() * 3)];
+            p.Hand.push(chosen);
+        } else {
+            const unit = p.Deck.pop(); unit.immortal = 0; p.Hand.push(unit);
+        }
+        return true;
+    } return false;
+}
+
+function endTurn() {
+    const cur = (turn === 1) ? P1 : P2;
+    cur.Field.forEach(u => { if(u.immortal > 0) u.immortal--; });
+    if (P1.invisibleTurns > 0) P1.invisibleTurns--;
+    if (P2.invisibleTurns > 0) P2.invisibleTurns--;
+    if (P1.rageTurns > 0) P1.rageTurns--;
+    if (P2.rageTurns > 0) P2.rageTurns--;
+    P1.dwarfSummonUsed = false;
+    P2.dwarfSummonUsed = false;
+    P1.dwarfGrudgeUsed = false;
+    P2.dwarfGrudgeUsed = false;
+    P1.dwarfShieldUsed = false;
+    P2.dwarfShieldUsed = false;
+    P1.elfCastUsed = false;
+    P2.elfCastUsed = false;
+    P1.elfSummonTaxUsed = false;
+    P2.elfSummonTaxUsed = false;
+    P1.elfPrideUsed = false;
+    P2.elfPrideUsed = false;
+    P1.humanAmbitionUsed = false;
+    P2.humanAmbitionUsed = false;
+    P1.orcFuryUsed = false;
+    P2.orcFuryUsed = false;
+    P1.orcGrudgeUsed = false;
+    P2.orcGrudgeUsed = false;
+    P1.orcEnduranceUsed = false;
+    P2.orcEnduranceUsed = false;
+    P1.goblinSparkUsed = false;
+    P2.goblinSparkUsed = false;
+    P1.goblinPrankUsed = false;
+    P2.goblinPrankUsed = false;
+    P1.catCuriosityUsed = false;
+    P2.catCuriosityUsed = false;
+    P1.catDwarfUsed = false;
+    P2.catDwarfUsed = false;
+    P1.dogSummonUsed = false;
+    P2.dogSummonUsed = false;
+    P1.dogItemUsed = false;
+    P2.dogItemUsed = false;
+    P1.tenguBladeUsed = false;
+    P2.tenguBladeUsed = false;
+    P1.tenguEchoUsed = false;
+    P2.tenguEchoUsed = false;
+    P1.tenguGrudgeUsed = false;
+    P2.tenguGrudgeUsed = false;
+    P1.koboldTrapUsed = false;
+    P2.koboldTrapUsed = false;
+    P1.koboldMergeUsed = false;
+    P2.koboldMergeUsed = false;
+    P1.koboldGrudgeUsed = false;
+    P2.koboldGrudgeUsed = false;
+    P1.gnomeCastCount = 0;
+    P2.gnomeCastCount = 0;
+    P1.gnomeIrritateUsed = false;
+    P2.gnomeIrritateUsed = false;
+    P1.halflingGrudgeUsed = false;
+    P2.halflingGrudgeUsed = false;
+    [P1, P2].forEach(p =>
+      p.Field.forEach(u => {
+        if (u.spellCooldown > 0) u.spellCooldown--;
+      })
+    );
+    ticks++; turn = (turn === 1) ? 2 : 1;
+    const next = (turn === 1) ? P1 : P2;
+    if (next.stunnedTurns > 0) { next.stunnedTurns--; log(`P${turn} IS STUNNED!`, "#ff00ff"); setTimeout(endTurn, 1000); } 
+    else if (isSinglePlayer && turn === 2) { setTimeout(aiAction, 1000); } 
+    else { log(`NEXT: P${turn}`, "yellow"); }
+}
+
+function aiAction() {
+    let aiActed = false;
+
+    // 1. AI Magic & Item Decisions
+    if (P2.Mana >= 3 && P1.Field.length >= 6) { handleCommand("cast fireball"); return; }
+    if (P2.Mana >= 2 && !P2.Protected && Math.random() > 0.5) { handleCommand("cast aegis"); return; }
+    if (P2.Mana >= 2 && P2.Hand.length <= 2) { handleCommand("cast intellect"); setTimeout(aiAction, 600); return; }
+
+    const itemIdx = P2.Hand.findIndex(c => c.isItem);
+    if (itemIdx > -1 && Math.random() > 0.4) {
+        const item = P2.Hand[itemIdx];
+        if ((item.effect === "mana" && P2.Mana <= 2) ||
+            (item.effect === "overcharge" && P2.Mana < manaCap(P2)) ||
+            item.effect === "stun" ||
+            (item.effect === "poison" && P1.Field.some(u => u.type === "Elite"))) {
+            handleCommand(`use ${itemIdx}`);
+            setTimeout(aiAction, 600); return;
+        }
+    }
+
+    // 2. AI Merging Logic
+    const types = ["S", "A", "B"];
+    if (!P2.Field.some(u => u.type === "Elite") && types.every(t => P2.Field.some(c => c.type === t))) {
+        handleCommand("merge"); return;
+    }
+
+    // 3. AI Combat/Summon Logic
+    if (P2.Hand.length <= 3 && P2.Deck.length > 0) { if (drawCard(P2)) { log("AI DREW."); endTurn(); updateUI(); return; } }
+
+    const canSummon = P2.Hand.findIndex(c => !c.isItem);
+    if (canSummon > -1 && P2.Field.length < P2.Slots && Math.random() > 0.3) {
+        P2.Field.push(P2.Hand.splice(canSummon, 1)[0]); log("AI DEPLOYED.");
+    } else {
+        let attacked = false;
+        if (P2.Field.some(c => c.type === "Elite") && P1.Field.length > 0) { handleCommand("attack elite"); return; }
+        for (let t of types) {
+            let tt = (t === "S") ? "A" : (t === "A") ? "B" : "S";
+            const ti = P1.Field.findIndex(c => c.type === tt);
+            if (P2.Field.some(c => c.type === t) && ti > -1) {
+                handleCommand(`attack ${t}`);
+                attacked = true; break;
+            }
+        }
+        if (!attacked) { handleCommand("pass"); return; }
+    }
+    endTurn(); updateUI();
+}
+
+function startGame() {
+    ticks = 1; turn = 1;
+    let r1 = document.getElementById('race-select').value;
+    const r1Data = getRace(r1);
+    P1 = { Hand: [], Field: [], Slots: 10 + (r1Data.slotsBonus || 0), Mana: (r1Data.startMana || 0), ManaCap: 6 + (r1Data.manaCapBonus || 0), Race: r1, Deck: [], Protected: !!r1Data.startProtected, stunnedTurns: 0, invisibleTurns: 0, Inventory: {}, RecipesKnown: [], rageTurns: 0, dwarfSummonUsed:false, dwarfGrudgeUsed:false, dwarfShieldUsed:false, elfCastUsed:false, elfSummonTaxUsed:false, elfPrideUsed:false, humanAmbitionUsed:false, orcFuryUsed:false, orcGrudgeUsed:false, orcEnduranceUsed:false, goblinSparkUsed:false, goblinPrankUsed:false, catCuriosityUsed:false, catDwarfUsed:false, dogSummonUsed:false, dogItemUsed:false, tenguBladeUsed:false, tenguEchoUsed:false, tenguGrudgeUsed:false, koboldTrapUsed:false, koboldMergeUsed:false, koboldGrudgeUsed:false, gnomeCastCount:0, gnomeIrritateUsed:false, halflingGrudgeUsed:false };
+    isSinglePlayer = (document.getElementById('mode-select').value === 'ai');
+    const races = Object.keys(RACE_DATA);
+    let r2 = isSinglePlayer ? races[Math.floor(Math.random()*races.length)] : document.getElementById('race-select-p2').value;
+    if (isSinglePlayer && r2 === r1) {
+        const idx = (races.indexOf(r2) + 1 + Math.floor(Math.random() * (races.length - 1))) % races.length;
+        r2 = races[idx];
+    }
+    const r2Data = getRace(r2);
+    P2 = { Hand: [], Field: [], Slots: 10 + (r2Data.slotsBonus || 0), Mana: (r2Data.startMana || 0), ManaCap: 6 + (r2Data.manaCapBonus || 0), Race: r2, Deck: [], Protected: !!r2Data.startProtected, stunnedTurns: 0, invisibleTurns: 0, Inventory: {}, RecipesKnown: [], rageTurns: 0, dwarfSummonUsed:false, dwarfGrudgeUsed:false, dwarfShieldUsed:false, elfCastUsed:false, elfSummonTaxUsed:false, elfPrideUsed:false, humanAmbitionUsed:false, orcFuryUsed:false, orcGrudgeUsed:false, orcEnduranceUsed:false, goblinSparkUsed:false, goblinPrankUsed:false, catCuriosityUsed:false, catDwarfUsed:false, dogSummonUsed:false, dogItemUsed:false, tenguBladeUsed:false, tenguEchoUsed:false, tenguGrudgeUsed:false, koboldTrapUsed:false, koboldMergeUsed:false, koboldGrudgeUsed:false, gnomeCastCount:0, gnomeIrritateUsed:false, halflingGrudgeUsed:false };
+    
+    P1.Deck = createDeck(P1.Race); P2.Deck = createDeck(P2.Race);
+    const p1StartDraw = 5 + (r1Data.startHandBonus || 0);
+    const p2StartDraw = 5 + (r2Data.startHandBonus || 0);
+    for(let i=0; i<p1StartDraw; i++) { drawCard(P1); }
+    for(let i=0; i<p2StartDraw; i++) { drawCard(P2); }
+
+    if (r1Data.startingUnits) { for(let i=0; i<r1Data.startingUnits; i++) P1.Field.push(P1.Deck.pop()); }
+    if (r2Data.startingUnits) { for(let i=0; i<r2Data.startingUnits; i++) P2.Field.push(P2.Deck.pop()); }
+    if (r1Data.dwarfPrepared) addStarterMineIngredients(P1, 2);
+    if (r2Data.dwarfPrepared) addStarterMineIngredients(P2, 2);
+
+    document.getElementById('main-menu').style.display = 'none'; document.getElementById('game-container').style.display = 'flex';
+    log("FIRST TO 10 IN THE HALL WINS!", "gold"); updateUI();
+}
+
+function saveGame() { localStorage.setItem('duelSave', JSON.stringify({P1, P2, ticks, turn})); log("SAVED."); }
+function loadGame() {
+    const data = localStorage.getItem('duelSave');
+    if (!data) { log("NO SAVE FOUND."); return; }
+    try {
+        const save = JSON.parse(data);
+        P1 = save.P1; P2 = save.P2; ticks = save.ticks; turn = save.turn;
+        P1.ManaCap = P1.ManaCap || 6;
+        P2.ManaCap = P2.ManaCap || 6;
+        P1.invisibleTurns = P1.invisibleTurns || 0;
+        P2.invisibleTurns = P2.invisibleTurns || 0;
+        P1.Inventory = P1.Inventory || {};
+        P2.Inventory = P2.Inventory || {};
+        P1.RecipesKnown = P1.RecipesKnown || [];
+        P2.RecipesKnown = P2.RecipesKnown || [];
+        P1.rageTurns = P1.rageTurns || 0;
+        P2.rageTurns = P2.rageTurns || 0;
+        P1.dwarfSummonUsed = P1.dwarfSummonUsed || false;
+        P2.dwarfSummonUsed = P2.dwarfSummonUsed || false;
+        P1.dwarfGrudgeUsed = P1.dwarfGrudgeUsed || false;
+        P2.dwarfGrudgeUsed = P2.dwarfGrudgeUsed || false;
+        P1.dwarfShieldUsed = P1.dwarfShieldUsed || false;
+        P2.dwarfShieldUsed = P2.dwarfShieldUsed || false;
+        P1.elfCastUsed = P1.elfCastUsed || false;
+        P2.elfCastUsed = P2.elfCastUsed || false;
+        P1.elfSummonTaxUsed = P1.elfSummonTaxUsed || false;
+        P2.elfSummonTaxUsed = P2.elfSummonTaxUsed || false;
+        P1.elfPrideUsed = P1.elfPrideUsed || false;
+        P2.elfPrideUsed = P2.elfPrideUsed || false;
+        P1.humanAmbitionUsed = P1.humanAmbitionUsed || false;
+        P2.humanAmbitionUsed = P2.humanAmbitionUsed || false;
+        P1.orcFuryUsed = P1.orcFuryUsed || false;
+        P2.orcFuryUsed = P2.orcFuryUsed || false;
+        P1.orcGrudgeUsed = P1.orcGrudgeUsed || false;
+        P2.orcGrudgeUsed = P2.orcGrudgeUsed || false;
+        P1.orcEnduranceUsed = P1.orcEnduranceUsed || false;
+        P2.orcEnduranceUsed = P2.orcEnduranceUsed || false;
+        P1.goblinSparkUsed = P1.goblinSparkUsed || false;
+        P2.goblinSparkUsed = P2.goblinSparkUsed || false;
+        P1.goblinPrankUsed = P1.goblinPrankUsed || false;
+        P2.goblinPrankUsed = P2.goblinPrankUsed || false;
+        P1.catCuriosityUsed = P1.catCuriosityUsed || false;
+        P2.catCuriosityUsed = P2.catCuriosityUsed || false;
+        P1.catDwarfUsed = P1.catDwarfUsed || false;
+        P2.catDwarfUsed = P2.catDwarfUsed || false;
+        P1.dogSummonUsed = P1.dogSummonUsed || false;
+        P2.dogSummonUsed = P2.dogSummonUsed || false;
+        P1.dogItemUsed = P1.dogItemUsed || false;
+        P2.dogItemUsed = P2.dogItemUsed || false;
+        P1.tenguBladeUsed = P1.tenguBladeUsed || false;
+        P2.tenguBladeUsed = P2.tenguBladeUsed || false;
+        P1.tenguEchoUsed = P1.tenguEchoUsed || false;
+        P2.tenguEchoUsed = P2.tenguEchoUsed || false;
+        P1.tenguGrudgeUsed = P1.tenguGrudgeUsed || false;
+        P2.tenguGrudgeUsed = P2.tenguGrudgeUsed || false;
+        P1.koboldTrapUsed = P1.koboldTrapUsed || false;
+        P2.koboldTrapUsed = P2.koboldTrapUsed || false;
+        P1.koboldMergeUsed = P1.koboldMergeUsed || false;
+        P2.koboldMergeUsed = P2.koboldMergeUsed || false;
+        P1.koboldGrudgeUsed = P1.koboldGrudgeUsed || false;
+        P2.koboldGrudgeUsed = P2.koboldGrudgeUsed || false;
+        P1.gnomeCastCount = P1.gnomeCastCount || 0;
+        P2.gnomeCastCount = P2.gnomeCastCount || 0;
+        P1.gnomeIrritateUsed = P1.gnomeIrritateUsed || false;
+        P2.gnomeIrritateUsed = P2.gnomeIrritateUsed || false;
+        P1.halflingGrudgeUsed = P1.halflingGrudgeUsed || false;
+        P2.halflingGrudgeUsed = P2.halflingGrudgeUsed || false;
+        document.getElementById('main-menu').style.display = 'none';
+        document.getElementById('game-container').style.display = 'flex';
+        log("LOADED SAVE.", "gold");
+        updateUI();
+    } catch (e) {
+        log("SAVE CORRUPT.");
+    }
+}
+cmdInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { handleCommand(cmdInput.value); cmdInput.value = ''; } });
+    /* =========================
+   V1.0.4 – WANDERING MERCHANT (STABLE)
+   ========================= */
+(() => {
+  const _handleCommand = handleCommand;
+  const _endTurn = endTurn;
+  const _updateUI = updateUI;
+
+  let merchantActive = false;
+  let lastMerchantTick = 0;
+  let merchantExpiresAt = 0;
+  let awaitingWizard = null;
+
+  const cur = () => (turn === 1 ? P1 : P2);
+  const opp = () => (turn === 1 ? P2 : P1);
+
+  /* ---------- MERCHANT ---------- */
+
+  function spawnMerchant() {
+    merchantActive = true;
+    lastMerchantTick = ticks;
+    merchantExpiresAt = ticks + 1;
+    log("🧙‍♂️ WANDERING MERCHANT APPEARS!", "gold");
+    log(
+      "merchant | buy item(3) | buy poison(6) | buy overcharge(6) | buy fortress(8) | buy wizard(10)",
+      "#00ffff"
+    );
+    toggleMerchant(true);
+  }
+
+  endTurn = function () {
+    _endTurn();
+
+    // Spawn merchant EVERY 5 ticks (5,10,15,...)
+    if (ticks % 5 === 0 && ticks !== lastMerchantTick) {
+      spawnMerchant();
+    }
+
+    if (merchantActive && ticks > merchantExpiresAt) {
+      merchantActive = false;
+      log("MERCHANT VANISHED.", "#888");
+    }
+  };
+
+  /* ---------- COMMAND PATCH ---------- */
+
+  handleCommand = async function (input) {
+    const p = input.toLowerCase().trim().split(/\s+/);
+    const act = p[0];
+    const player = cur();
+    const enemy = opp();
+
+    /* MERCHANT CHECK */
+    if (act === "merchant") {
+      log(merchantActive ? "🛒 MERCHANT READY" : "NO MERCHANT PRESENT");
+      return;
+    }
+
+    /* BUY FROM MERCHANT */
+    if (act === "buy" && merchantActive) {
+      const m = player.Mana;
+
+      if (p[1] === "item" && m >= 3) {
+        player.Mana -= 3;
+        const pool = [
+          { name: "Mana Potion", effect: "mana" },
+          { name: "Stun Bomb", effect: "stun" },
+          { name: "Strength Pot", effect: "immortal" }
+        ];
+        const it = pool[Math.floor(Math.random() * pool.length)];
+        player.Hand.push({ ...it, type: "Item", isItem: true });
+        log(`BOUGHT ${it.name}`, "gold");
+      }
+
+      else if (p[1] === "manapot" && m >= 6) {
+        player.Mana -= 6;
+        player.Hand.push({ name: "Mana Potion", type: "Item", isItem: true, effect: "mana" });
+        log("BOUGHT MANA POTION", "gold");
+      }
+
+      else if (p[1] === "stun" && m >= 4) {
+        player.Mana -= 4;
+        player.Hand.push({ name: "Stun Bomb", type: "Item", isItem: true, effect: "stun" });
+        log("BOUGHT STUN BOMB", "gold");
+      }
+
+      else if (p[1] === "strength" && m >= 4) {
+        player.Mana -= 4;
+        player.Hand.push({ name: "Strength Pot", type: "Item", isItem: true, effect: "immortal" });
+        log("BOUGHT STRENGTH POT", "gold");
+      }
+
+      else if (p[1] === "invisibility" && m >= 5) {
+        player.Mana -= 5;
+        player.Hand.push({ name: "Invisibility Potion", type: "Item", isItem: true, effect: "invisibility" });
+        log("BOUGHT INVISIBILITY POTION", "gold");
+      }
+
+      else if (p[1] === "legendary" && m >= 8) {
+        player.Mana -= 8;
+        player.Hand.push({ name: "Legendary Mana Pot", type: "Item", isItem: true, effect: "legendary_mana" });
+        log("BOUGHT LEGENDARY MANA POT", "gold");
+      }
+
+      else if (p[1] === "poison" && m >= 6) {
+        player.Mana -= 6;
+        player.Hand.push({
+          name: "Scouts Poison",
+          type: "Item",
+          isItem: true,
+          effect: "poison"
+        });
+        log("BOUGHT SCOUTS POISON", "gold");
+      }
+
+      else if (p[1] === "overcharge" && m >= 6) {
+        player.Mana -= 6;
+        player.Hand.push({
+          name: "Mana Overcharger",
+          type: "Item",
+          isItem: true,
+          effect: "overcharge",
+          owner: turn
+        });
+        log("⚡ BOUGHT MANA OVERCHARGER", "gold");
+      }
+
+      else if (p[1] === "fortress" && m >= 8) {
+        player.Mana -= 8;
+        player.Slots += 2;
+        player.defense = (player.defense || 0) + 1;
+        log("🏰 FORTRESS BUILT (DEF +1, SLOTS +2)", "gold");
+      }
+
+      else if (p[1] === "wizard" && m >= 10) {
+        player.Mana -= 10;
+        player.Hand.push({
+          name: "Wizard",
+          type: "W",
+          immortal: 0,
+          spellCooldown: 0
+        });
+        log("🧙 WIZARD HIRED", "gold");
+      }
+      else if (p[1] === "book" && p[2]) {
+        const bookName = input.slice(9).trim();
+        const book = RECIPE_BOOKS.find(b => b.name.toLowerCase() === bookName.toLowerCase());
+        if (!book) { log("UNKNOWN RECIPE BOOK"); return; }
+        if (m < book.cost) { log("NOT ENOUGH MANA"); return; }
+        player.Mana -= book.cost;
+        player.RecipesKnown = player.RecipesKnown || [];
+        book.recipes.forEach(r => { if (!player.RecipesKnown.includes(r)) player.RecipesKnown.push(r); });
+        log(`LEARNED RECIPES: ${book.recipes.join(", ")}`, "gold");
+      }
+
+      else {
+        log("NOT ENOUGH MANA");
+        return;
+      }
+
+      merchantActive = false;
+      toggleMerchant(false);
+      updateUI();
+      return;
+    }
+
+    /* ---------- WIZARD ---------- */
+
+    if (act === "attack" && p[1] === "w") {
+      const wiz = player.Field.find(u => u.type === "W");
+      if (!wiz) return log("NO WIZARD");
+      if (wiz.spellCooldown > 0) return log("WIZARD ON COOLDOWN");
+      awaitingWizard = wiz;
+      log("SPELL? fireball | thunderbolt | aegis | intellect", "#00ffff");
+      return;
+    }
+
+    if (act === "spell" && awaitingWizard) {
+      const wiz = awaitingWizard;
+      awaitingWizard = null;
+
+      if (p[1] === "fireball") {
+        playSfx('cast');
+        let removed = 0;
+        let pool = enemy.Field.map((u, i) => ({u, i})).filter(x => x.u.immortal <= 0);
+        while (pool.length > 0 && removed < 3) {
+          const pick = Math.floor(Math.random() * pool.length);
+          const idx = pool[pick].i;
+          if (enemy.Race === "Orc" && !enemy.orcEnduranceUsed) {
+            enemy.orcEnduranceUsed = true;
+            enemy.Field[idx].immortal = 1;
+            log("ORC ENDURANCE: UNIT SURVIVED!", "gold");
+          } else {
+            enemy.Field.splice(idx, 1);
+            removed++;
+          }
+          pool = enemy.Field.map((u, i) => ({u, i})).filter(x => x.u.immortal <= 0);
+        }
+        log("🔥 FIREBALL CAST", "gold");
+      }
+
+      else if (p[1] === "thunderbolt") {
+        playSfx('cast');
+        if (enemy.Field.length) enemy.Field.pop();
+        enemy.stunnedTurns = Math.max(enemy.stunnedTurns || 0, 1);
+        log("⚡ THUNDERBOLT! UNIT DESTROYED + STUN", "gold");
+      }
+
+      else if (p[1] === "aegis") {
+        playSfx('cast');
+        player.Protected = true;
+        log("🛡️ AEGIS CAST", "gold");
+      }
+
+      else if (p[1] === "intellect") {
+        playSfx('cast');
+        drawCard(player);
+        drawCard(player);
+        log("📘 INTELLECT CAST", "gold");
+      }
+
+      wiz.spellCooldown = 3;
+      endTurn();
+      updateUI();
+      return;
+    }
+
+    /* ---------- FORTRESS DEFENSE ---------- */
+
+    if (act === "attack" && enemy.defense) {
+      const target = enemy.Field[0];
+      if (target) {
+        target.hits = (target.hits || 0) + 1;
+        if (target.hits < 2) {
+          log("🛡️ DEFENSE ABSORBED HIT");
+          endTurn();
+          return;
+        }
+      }
+    }
+
+    await _handleCommand(input);
+  };
+
+  /* ---------- AI DRAW ---------- */
+
+  updateUI = function () {
+    _updateUI();
+  };
+
+})();
+
+</script>
+</body>
+</html>
